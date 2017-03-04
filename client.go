@@ -35,27 +35,65 @@ func requestJSON(method string, url string, data interface{}) ([]byte, error) {
 	return ioutil.ReadAll(res.Body)
 }
 
-func RegisterService(service *Service) (bool, error) {
-	_, err := requestJSON("PUT", "http://127.0.0.1:8080/service", service)
-
-	if err != nil {
-		return false, err
-	}
-
-	return true, err
-}
-
-func SendMsg(msg *Message) (*bytes.Reader, error) {
-	res, err := requestJSON("PUT", "http://127.0.0.1:8080/message", msg)
+func request(method string, url string, data []byte) ([]byte, error) {
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
 
-	return bytes.NewReader(res), err
+	req.Header.Set("Content-Type", JSON_CONTENT_TYPE)
+
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	return ioutil.ReadAll(res.Body)
+}
+
+func RegisterService(service *Service) (*Member, error) {
+	rBody, err := requestJSON("PUT", "http://127.0.0.1:8080/namespace", service)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var member *Member
+	err = json.Unmarshal(rBody, &member)
+	return member, err
+}
+
+func Request(ns string, msg []byte) ([]byte, error) {
+	res, err := request("PUT", fmt.Sprintf("http://127.0.0.1:8080/message/reqRes/%s", ns), msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, err
+}
+
+func Publish(topic string, msg []byte) ([]byte, error) {
+	res, err := request("PUT", fmt.Sprintf("http://127.0.0.1:8080/message/pubSub/%s", topic), msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, err
+}
+
+func Notificate(ns string, msg []byte) ([]byte, error) {
+	res, err := request("PUT", fmt.Sprintf("http://127.0.0.1:8080/message/noti/%s", ns), msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, err
 }
 
 func GetMembers(ns string) (*Members, error) {
-	resp, err := http.Get("http://127.0.0.1:8080/member/" + ns)
+	resp, err := http.Get("http://127.0.0.1:8080/namespace/" + ns)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +109,7 @@ func GetMembers(ns string) (*Members, error) {
 }
 
 func GetAllMembers() (*Members, error) {
-	resp, err := http.Get("http://127.0.0.1:8080/member")
+	resp, err := http.Get("http://127.0.0.1:8080/namespace")
 	if err != nil {
 		return nil, err
 	}

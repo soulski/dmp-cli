@@ -14,35 +14,40 @@ type Service struct {
 	ContactPoint string `json:"contact-point"`
 }
 
-type Message struct {
-	Type      string `json:"type"`
-	Topic     string `json:"topic"`
-	Namespace string `json:"namespace"`
-	Body      []byte `json:"body"`
+type Msg struct {
+	MsgType string          `json:"type"`
+	Body    json.RawMessage `json:"body,omitempty"`
 }
 
-func NewReqresMsg(ns string, body interface{}) (*Message, error) {
+func NewMsg(mType string, body interface{}) ([]byte, error) {
 	bodyBuff, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Message{
-		Type:      REQ_RES,
-		Namespace: ns,
-		Body:      bodyBuff,
-	}, nil
+	msg, err := json.Marshal(&Msg{
+		MsgType: mType,
+		Body:    bodyBuff,
+	})
+
+	return msg, err
 }
 
-func NewPubsubMsg(topic string, body interface{}) (*Message, error) {
-	bodyBuff, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
+func NewMsgWithBuff(mType string, buff []byte) ([]byte, error) {
+	msg, err := json.Marshal(&Msg{
+		MsgType: mType,
+		Body:    buff,
+	})
 
-	return &Message{
-		Type:  PUB_SUB,
-		Topic: topic,
-		Body:  bodyBuff,
-	}, nil
+	return msg, err
+}
+
+func ParseMsg(body []byte) (*Msg, error) {
+	var msg *Msg
+	err := json.Unmarshal(body, &msg)
+	return msg, err
+}
+
+func (m *Msg) ParseBody(msgType interface{}) error {
+	return json.Unmarshal(m.Body, msgType)
 }
